@@ -13,6 +13,9 @@ mongoose.connect('mongodb://localhost:27017/nebula_db')
       type: 'Neon Gas Giant',
       distance: 420,
       hazardLevel: 8,
+      atmosphere: 'Neon-rich, highly ionized',
+      temperature: '-210°C',
+      composition: 'Hydrogen, Helium, Neon',
       description: 'A massive gas giant with high concentrations of neon, creating permanent violet aurorae.',
       image: 'exoplanet.png'
     },
@@ -21,14 +24,20 @@ mongoose.connect('mongodb://localhost:27017/nebula_db')
       type: 'Frozen Wasteland',
       distance: 15,
       hazardLevel: 4,
+      atmosphere: 'Thin Nitrogen/Methane',
+      temperature: '-180°C',
+      composition: 'Water Ice, Silicates',
       description: 'An icy world with underground thermal vents that might harbor primitive life.',
-      image: 'exoplanet.png' // Using same for now, or I'll generate more later
+      image: 'exoplanet.png'
     },
     {
       name: 'Nova Centauri',
       type: 'Binary Star System Planet',
       distance: 4.2,
       hazardLevel: 2,
+      atmosphere: 'Oxygen/Nitrogen Mix',
+      temperature: '15°C',
+      composition: 'Metals, Rocks',
       description: 'The closest habitable terrestrial world discovered outside our solar system.',
       image: 'exoplanet.png'
     }

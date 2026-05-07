@@ -35,10 +35,6 @@
             background: rgba(5, 11, 24, 0.8);
             backdrop-filter: blur(10px);
         }
-        .hud-glow-purple {
-            border: 1px solid var(--neon-purple);
-            box-shadow: 0 0 15px rgba(188, 19, 254, 0.2);
-        }
         .scanline {
             width: 100%;
             height: 2px;
@@ -86,6 +82,9 @@
             box-shadow: 0 0 10px rgba(0, 243, 255, 0.3) !important;
         }
         .hazard-bar { height: 4px; border-radius: 2px; transition: width 1s ease-out; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0, 243, 255, 0.05); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: var(--neon-cyan); }
     </style>
 </head>
 <body class="p-4 md:p-8">
@@ -93,19 +92,29 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useRef } = React;
 
         function App() {
             const [discoveries, setDiscoveries] = useState([]);
             const [loading, setLoading] = useState(true);
             const [showForm, setShowForm] = useState(false);
+            const [selectedPlanet, setSelectedPlanet] = useState(null);
             const [formData, setFormData] = useState({
-                name: '', type: 'Terrestrial', distance: '', hazardLevel: 1, description: '', image: 'exoplanet.png'
+                name: '', type: 'Terrestrial', distance: '', hazardLevel: 1, atmosphere: '', temperature: '', composition: '', description: '', image: 'exoplanet.png'
             });
+
+            // Audio Refs
+            const clickSound = useRef(null);
+            const scanSound = useRef(null);
 
             useEffect(() => {
                 fetchDiscoveries();
+                clickSound.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3');
+                scanSound.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3');
             }, []);
+
+            const playClick = () => { clickSound.current.currentTime = 0; clickSound.current.play().catch(() => {}); };
+            const playScan = () => { scanSound.current.currentTime = 0; scanSound.current.play().catch(() => {}); };
 
             const fetchDiscoveries = () => {
                 fetch("/api/discoveries")
@@ -119,6 +128,7 @@
 
             const handleSubmit = (e) => {
                 e.preventDefault();
+                playClick();
                 fetch("/api/discoveries", {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -128,7 +138,7 @@
                 .then(() => {
                     fetchDiscoveries();
                     setShowForm(false);
-                    setFormData({ name: '', type: 'Terrestrial', distance: '', hazardLevel: 1, description: '', image: 'exoplanet.png' });
+                    setFormData({ name: '', type: 'Terrestrial', distance: '', hazardLevel: 1, atmosphere: '', temperature: '', composition: '', description: '', image: 'exoplanet.png' });
                 });
             };
 
@@ -146,7 +156,7 @@
                                 <p class="text-sm text-green-400 animate-pulse">SYSTEMS NOMINAL</p>
                             </div>
                             <button 
-                                onClick={() => setShowForm(!showForm)}
+                                onClick={() => { playClick(); setShowForm(!showForm); }}
                                 class="hud-border px-6 py-2 bg-cyan-900/30 hover:bg-cyan-400 hover:text-black transition-all font-bold text-sm tracking-tighter"
                             >
                                 {showForm ? 'CLOSE LINK' : 'LOG NEW SIGNAL'}
@@ -162,56 +172,45 @@
                                 <div class="space-y-4">
                                     <div>
                                         <label class="block text-[10px] mb-1 opacity-70">PLANET NAME</label>
-                                        <input 
-                                            required class="w-full p-2 outline-none" 
-                                            value={formData.name}
-                                            onChange={e => setFormData({...formData, name: e.target.value})}
-                                        />
+                                        <input required class="w-full p-2 outline-none" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
                                     </div>
-                                    <div>
-                                        <label class="block text-[10px] mb-1 opacity-70">SECTOR TYPE</label>
-                                        <select 
-                                            class="w-full p-2 outline-none"
-                                            value={formData.type}
-                                            onChange={e => setFormData({...formData, type: e.target.value})}
-                                        >
-                                            <option>Terrestrial</option>
-                                            <option>Gas Giant</option>
-                                            <option>Ice World</option>
-                                            <option>Oceanic</option>
-                                            <option>Volcanic</option>
-                                        </select>
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="block text-[10px] mb-1 opacity-70">SECTOR TYPE</label>
+                                            <select class="w-full p-2 outline-none text-xs" value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})}>
+                                                <option>Terrestrial</option><option>Gas Giant</option><option>Ice World</option><option>Oceanic</option><option>Volcanic</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label class="block text-[10px] mb-1 opacity-70">DISTANCE (LY)</label>
+                                            <input type="number" required class="w-full p-2 outline-none" value={formData.distance} onChange={e => setFormData({...formData, distance: e.target.value})} />
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label class="block text-[10px] mb-1 opacity-70">DISTANCE (LY)</label>
-                                        <input 
-                                            type="number" required class="w-full p-2 outline-none" 
-                                            value={formData.distance}
-                                            onChange={e => setFormData({...formData, distance: e.target.value})}
-                                        />
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="block text-[10px] mb-1 opacity-70">ATMOSPHERE</label>
+                                            <input class="w-full p-2 outline-none text-xs" value={formData.atmosphere} onChange={e => setFormData({...formData, atmosphere: e.target.value})} />
+                                        </div>
+                                        <div>
+                                            <label class="block text-[10px] mb-1 opacity-70">TEMPERATURE</label>
+                                            <input class="w-full p-2 outline-none text-xs" value={formData.temperature} onChange={e => setFormData({...formData, temperature: e.target.value})} />
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="space-y-4">
                                     <div>
                                         <label class="block text-[10px] mb-1 opacity-70">HAZARD LEVEL (1-10)</label>
-                                        <input 
-                                            type="range" min="1" max="10" class="w-full accent-cyan-400" 
-                                            value={formData.hazardLevel}
-                                            onChange={e => setFormData({...formData, hazardLevel: e.target.value})}
-                                        />
-                                        <div class="flex justify-between text-[10px] text-cyan-600">
-                                            <span>SAFE</span><span>EXTREME</span>
-                                        </div>
+                                        <input type="range" min="1" max="10" class="w-full accent-cyan-400" value={formData.hazardLevel} onChange={e => setFormData({...formData, hazardLevel: e.target.value})} />
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] mb-1 opacity-70">COMPOSITION</label>
+                                        <input class="w-full p-2 outline-none text-xs" value={formData.composition} onChange={e => setFormData({...formData, composition: e.target.value})} />
                                     </div>
                                     <div>
                                         <label class="block text-[10px] mb-1 opacity-70">DESCRIPTION</label>
-                                        <textarea 
-                                            rows="3" class="w-full p-2 outline-none"
-                                            value={formData.description}
-                                            onChange={e => setFormData({...formData, description: e.target.value})}
-                                        ></textarea>
+                                        <textarea rows="2" class="w-full p-2 outline-none text-xs" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})}></textarea>
                                     </div>
-                                    <button class="w-full bg-cyan-400 text-black font-bold py-3 hover:bg-white transition-colors">TRANSMIT DATA</button>
+                                    <button class="w-full bg-cyan-400 text-black font-bold py-3 hover:bg-white transition-colors uppercase tracking-widest text-sm">Transmit Data</button>
                                 </div>
                             </form>
                         </div>
@@ -219,56 +218,87 @@
 
                     {/* Grid of Discoveries */}
                     {loading ? (
-                        <div class="flex justify-center p-20">
-                            <div class="w-12 h-12 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
-                        </div>
+                        <div class="flex justify-center p-20"><div class="w-12 h-12 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin"></div></div>
                     ) : (
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                             {discoveries.map(planet => (
-                                <div key={planet._id} class="planet-card hud-border rounded-sm border-t-2 border-r-2 group">
+                                <div key={planet._id} onClick={() => { playScan(); setSelectedPlanet(planet); }} class={`planet-card hud-border rounded-sm border-t-2 border-r-2 group cursor-pointer ${planet.hazardLevel >= 8 ? 'border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.2)]' : ''}`}>
+                                    {planet.hazardLevel >= 8 && <div class="absolute top-0 left-0 w-full h-full pointer-events-none animate-pulse bg-red-500/5 z-0"></div>}
                                     <div class="h-48 overflow-hidden relative">
                                         <img src={planet.image} class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" />
                                         <div class="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-60"></div>
                                         <div class="absolute bottom-4 left-4">
-                                            <span class="text-[10px] bg-cyan-400 text-black px-2 py-0.5 font-bold uppercase">{planet.type}</span>
+                                            <span class={`text-[10px] px-2 py-0.5 font-bold uppercase ${planet.hazardLevel >= 8 ? 'bg-red-500 text-white' : 'bg-cyan-400 text-black'}`}>
+                                                {planet.hazardLevel >= 8 ? '⚠️ EXTREME' : planet.type}
+                                            </span>
                                         </div>
                                     </div>
-                                    <div class="p-6">
+                                    <div class="p-6 relative z-10">
                                         <div class="flex justify-between items-start mb-4">
-                                            <h3 class="text-2xl text-cyan-400">{planet.name}</h3>
-                                            <div class="text-right">
-                                                <p class="text-[10px] opacity-50">DISTANCE</p>
-                                                <p class="text-sm font-bold text-white">{planet.distance} LY</p>
-                                            </div>
+                                            <h3 class={`text-2xl ${planet.hazardLevel >= 8 ? 'text-red-400' : 'text-cyan-400'}`}>{planet.name}</h3>
+                                            <div class="text-right"><p class="text-[10px] opacity-50">DISTANCE</p><p class="text-sm font-bold text-white">{planet.distance} LY</p></div>
                                         </div>
-                                        <p class="text-xs text-slate-400 mb-6 line-clamp-3 leading-relaxed">{planet.description}</p>
-                                        
+                                        <p class="text-xs text-slate-400 mb-6 line-clamp-2 leading-relaxed">{planet.description}</p>
                                         <div class="space-y-2">
-                                            <div class="flex justify-between text-[8px] tracking-widest text-cyan-800 font-bold">
-                                                <span>HAZARD INDEX</span>
-                                                <span>{planet.hazardLevel}/10</span>
+                                            <div class={`flex justify-between text-[8px] tracking-widest font-bold ${planet.hazardLevel >= 8 ? 'text-red-800' : 'text-cyan-800'}`}>
+                                                <span>HAZARD INDEX</span><span>{planet.hazardLevel}/10</span>
                                             </div>
-                                            <div class="w-full bg-slate-900 rounded-full h-1 overflow-hidden border border-cyan-950">
-                                                <div 
-                                                    class="hazard-bar bg-gradient-to-r from-cyan-400 to-purple-600"
-                                                    style={{ width: `${planet.hazardLevel * 10}%` }}
-                                                ></div>
+                                            <div class={`w-full bg-slate-900 rounded-full h-1 overflow-hidden border ${planet.hazardLevel >= 8 ? 'border-red-950' : 'border-cyan-950'}`}>
+                                                <div class={`hazard-bar ${planet.hazardLevel >= 8 ? 'bg-gradient-to-r from-red-600 to-orange-500' : 'bg-gradient-to-r from-cyan-400 to-purple-600'}`} style={{ width: `${planet.hazardLevel * 10}%` }}></div>
                                             </div>
                                         </div>
-                                    </div>
-                                    <div class="absolute top-2 right-2 flex gap-1 opacity-20 group-hover:opacity-100 transition-opacity">
-                                        <div class="w-1 h-1 bg-cyan-400"></div>
-                                        <div class="w-1 h-1 bg-cyan-400"></div>
-                                        <div class="w-1 h-1 bg-cyan-400"></div>
                                     </div>
                                 </div>
                             ))}
                         </div>
                     )}
 
-                    <footer class="mt-24 pb-8 text-center text-[10px] tracking-[0.5em] text-cyan-900 uppercase">
-                        End of Transmission | Secure Link Active
-                    </footer>
+                    {/* Deep Scan Modal */}
+                    {selectedPlanet && (
+                        <div class="fixed inset-0 z-[200] flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-300">
+                            <div class="absolute inset-0 bg-black/95 backdrop-blur-xl" onClick={() => setSelectedPlanet(null)}></div>
+                            <div class="relative w-full max-w-4xl hud-border p-1 rounded-sm overflow-hidden bg-slate-950 border-cyan-400/50">
+                                <div class="p-8 grid grid-cols-1 md:grid-cols-2 gap-12">
+                                    <div class="space-y-8">
+                                        <div class="relative group">
+                                            <img src={selectedPlanet.image} class="w-full aspect-square object-cover border border-cyan-900" />
+                                            <div class="absolute -top-2 -left-2 w-8 h-8 border-t-2 border-l-2 border-cyan-400"></div>
+                                            <div class="absolute -bottom-2 -right-2 w-8 h-8 border-b-2 border-r-2 border-cyan-400"></div>
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-4">
+                                            <div class="hud-border p-4 bg-cyan-950/10">
+                                                <p class="text-[10px] text-cyan-600 mb-1">ATMOSPHERE</p>
+                                                <p class="text-sm font-bold text-cyan-100">{selectedPlanet.atmosphere || 'UNKNOWN'}</p>
+                                            </div>
+                                            <div class="hud-border p-4 bg-cyan-950/10">
+                                                <p class="text-[10px] text-cyan-600 mb-1">TEMPERATURE</p>
+                                                <p class="text-sm font-bold text-cyan-100">{selectedPlanet.temperature || 'UNKNOWN'}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex flex-col">
+                                        <div class="flex justify-between items-start mb-8 border-b border-cyan-900 pb-4">
+                                            <div><h2 class="text-4xl text-cyan-400 font-bold">{selectedPlanet.name}</h2><p class="text-xs text-cyan-700 tracking-[0.3em] uppercase mt-1">{selectedPlanet.type}</p></div>
+                                            <button onClick={() => setSelectedPlanet(null)} class="text-cyan-800 hover:text-white transition-colors"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+                                        </div>
+                                        <div class="flex-1 space-y-6 overflow-y-auto pr-4 custom-scrollbar">
+                                            <section><h4 class="text-[10px] text-cyan-600 mb-2 font-bold tracking-widest">MISSION BRIEFING</h4><p class="text-sm leading-relaxed text-slate-300">{selectedPlanet.description}</p></section>
+                                            <section><h4 class="text-[10px] text-cyan-600 mb-2 font-bold tracking-widest">CHEMICAL COMPOSITION</h4><p class="text-sm text-white font-mono">{selectedPlanet.composition || 'UNANALYZED'}</p></section>
+                                            <div class="mt-auto pt-8 flex justify-between items-end">
+                                                <div class="space-y-1"><p class="text-[10px] text-cyan-800">DISTANCE FROM CORE</p><p class="text-2xl font-bold text-white tracking-tighter">{selectedPlanet.distance} <span class="text-xs font-normal opacity-50">LY</span></p></div>
+                                                <div class="text-right">
+                                                    <p class="text-[10px] text-red-900 font-bold mb-1 uppercase">Hazard Rating</p>
+                                                    <div class="flex gap-1">{[...Array(10)].map((_, i) => (<div key={i} class={`w-2 h-4 border ${i < selectedPlanet.hazardLevel ? 'bg-red-500 border-red-400' : 'bg-slate-900 border-slate-800'}`}></div>))}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <footer class="mt-24 pb-8 text-center text-[10px] tracking-[0.5em] text-cyan-900 uppercase">End of Transmission | Secure Link Active</footer>
                 </div>
             );
         }
