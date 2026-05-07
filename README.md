@@ -1,69 +1,49 @@
-# 🌌 NEBULA EXPLORER: Interstellar Mission Log
+# 🌌 Nebula Explorer: Immersive HUD
 
-![Nebula HUD](exoplanet.png)
+An elite, highly immersive sci-fi planetary dashboard built with **React**, **Node.js/Express**, and **MongoDB**. Featuring advanced browser APIs for a professional "WOW" demonstration.
 
-> **"Exploring the unknown, one signal at a time."**
+## 🛰️ Key Features
+- **Retro Terminal Login**: A boot-sequence authentication layer requiring `SCAN` command.
+- **AI Mission Briefing**: Automated robotic voice reports using Web Speech API.
+- **Interstellar Static Engine**: Reactive "cosmic hum" modulated by mouse movement via Web Audio API.
+- **Tactile Audio Feedback**: Synthesized mechanical typing clicks for total immersion.
+- **Deep Scan HUD**: High-contrast, tech-heavy UI for planetary metadata and hazard indexing.
 
-Nebula Explorer is a premium, full-stack Interstellar Discovery Dashboard. Built with a high-end Sci-Fi HUD aesthetic, it allows explorers to log planetary discoveries, monitor hazard levels, and visualize deep-space signals in real-time.
+## 🛠️ Setup & Execution
 
----
+### 1. Prerequisites
+- **Node.js** installed.
+- **MongoDB** running locally on `mongodb://localhost:27017/nebula_db`.
 
-## 🛰️ MISSION FEATURES
-
-- **🛸 Cinematic HUD**: A futuristic terminal interface with scanline animations, glitch effects, and Orbitron typography.
-- **📡 Real-time Discovery Logging**: Integrated with MongoDB to store and retrieve planetary data on the fly.
-- **⚠️ Hazard Indexing**: Dynamic visual gauges for planetary risk assessment (Radiation, Atmosphere, Gravity).
-- **🚀 AI-Generated Assets**: Unique planetary visuals generated for an immersive deep-space experience.
-- **💻 Responsive Mission Control**: Fully accessible across all terminal devices.
-
----
-
-## 🛠️ TECH STACK
-
-| Layer | Technology |
-| :--- | :--- |
-| **Frontend** | React, Tailwind CSS, Google Fonts (Orbitron/Michroma) |
-| **Backend** | Node.js, Express.js |
-| **Database** | MongoDB, Mongoose |
-| **Assets** | AI-Generated Space Imagery |
-| **Deployment** | Git / GitHub |
-
----
-
-## ⚡ QUICK START
-
-### 1. Initialize the Base
+### 2. Installation
+Clone the repository and install dependencies:
 ```bash
 npm install
 ```
 
-### 2. Connect to the Nebula
-Ensure your local MongoDB instance is active.
-
-### 3. Seed the Logs
+### 3. Initialize Database (Optional)
+Populate the database with pre-configured planetary data:
 ```bash
 node nebula_seed.js
 ```
 
-### 4. Launch Mission Control
+### 4. Launch the Dashboard
+Start the Mission Control server:
 ```bash
 node nebula_server.js
 ```
 
-Open your terminal at `http://localhost:5000/nebula_explorer.html` to begin the mission.
+### 5. Access the HUD
+Open your browser and navigate to the link displayed in your terminal:
+👉 **[http://localhost:5000/nebula_explorer.html](http://localhost:5000/nebula_explorer.html)**
 
 ---
 
-## 📂 DIRECTORY STRUCTURE
-
-- `nebula_explorer.html`: The interactive HUD dashboard.
-- `nebula_server.js`: Express backend & static asset server.
-- `nebula_schema.js`: Discovery data structure.
-- `nebula_seed.js`: Initial planetary logs.
-- `exoplanet.png`: Primary sector asset.
+## 🕹️ Pilot Instructions
+1.  **Initialize Uplink**: Click the "Initialize System" button on the entry screen to activate the audio engine.
+2.  **Authenticate**: Type `SCAN` in the terminal and press Enter to unlock the HUD.
+3.  **Tuning**: Toggle "Audio Uplink" in the header to activate the reactive cosmic background hum.
+4.  **Deep Scan**: Interact with planetary cards to trigger AI-voiced mission briefings.
 
 ---
-
-## 🔒 SECURITY PROTOCOLS
-This project was developed for educational and experimental purposes. Secure link active.
-
+*Created for elite galactic exploration. Secure Link Active.*

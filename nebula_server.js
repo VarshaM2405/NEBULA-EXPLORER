@@ -9,7 +9,14 @@ const PORT = 5000;
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(__dirname)); // Serve static files (images, frontend)
+
+// REDIRECT ROUTE - FORCED PRIORITY
+app.get('/', (req, res) => {
+  console.log('📡 Root request received - Redirecting to Explorer HUD...');
+  res.redirect('/nebula_explorer.html');
+});
+
+app.use(express.static(__dirname)); // Serve static files
 
 mongoose.connect('mongodb://localhost:27017/nebula_db')
 .then(() => console.log('🌌 Nebula Database Connected'))
@@ -37,5 +44,8 @@ app.post('/api/discoveries', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Mission Control active at http://localhost:${PORT}`);
+  console.log('-------------------------------------------');
+  console.log('🚀 Mission Control: [ONLINE]');
+  console.log(`🔗 Link: http://localhost:${PORT}/nebula_explorer.html`);
+  console.log('-------------------------------------------');
 });
