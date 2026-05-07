@@ -67,4 +67,3 @@ Open your terminal at `http://localhost:5000/nebula_explorer.html` to begin the 
 ## 🔒 SECURITY PROTOCOLS
 This project was developed for educational and experimental purposes. Secure link active.
 
-**Developed with ❤️ by [Antigravity](https://github.com/VarshaM2405)**
