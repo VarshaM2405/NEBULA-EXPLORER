@@ -95,6 +95,18 @@
         const { useState, useEffect, useRef } = React;
 
         const AtmosphereVisualizer = ({ type, hazard }) => {
+            const [progress, setProgress] = React.useState(Math.floor(Math.random() * 30));
+
+            React.useEffect(() => {
+                const interval = setInterval(() => {
+                    setProgress(prev => {
+                        if (prev >= 100) return 98 + Math.floor(Math.random() * 2); 
+                        return prev + Math.floor(Math.random() * 5);
+                    });
+                }, 100);
+                return () => clearInterval(interval);
+            }, []);
+
             const getStyle = () => {
                 switch(type) {
                     case 'Gas Giant': return 'bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-950 animate-pulse';
@@ -149,7 +161,7 @@
                         <p class="text-[8px] tracking-[0.4em] text-cyan-400 font-bold mb-1 uppercase">Atmosphere Probe</p>
                         <div class="flex items-center gap-2 justify-center">
                             <div class="w-1 h-1 bg-cyan-400 animate-ping"></div>
-                            <span class="text-[10px] text-white font-mono">SCANNING... {Math.floor(Math.random() * 100)}%</span>
+                            <span class="text-[10px] text-white font-mono">SCANNING... {progress}%</span>
                         </div>
                     </div>
 
