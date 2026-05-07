@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nebula Explorer | Mission Log</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Michroma&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --neon-cyan: #00f3ff;
+            --neon-purple: #bc13fe;
+            --deep-space: #050b18;
+        }
+        body {
+            font-family: 'Michroma', sans-serif;
+            background-color: var(--deep-space);
+            background-image: 
+                linear-gradient(rgba(0, 243, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 243, 255, 0.03) 1px, transparent 1px),
+                url('background.png');
+            background-size: 50px 50px, 50px 50px, cover;
+            background-attachment: fixed;
+            color: #e0f2fe;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+        h1, h2, h3 { font-family: 'Orbitron', sans-serif; }
+        .hud-border {
+            border: 1px solid var(--neon-cyan);
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.2), inset 0 0 15px rgba(0, 243, 255, 0.1);
+            background: rgba(5, 11, 24, 0.8);
+            backdrop-filter: blur(10px);
+        }
+        .hud-glow-purple {
+            border: 1px solid var(--neon-purple);
+            box-shadow: 0 0 15px rgba(188, 19, 254, 0.2);
+        }
+        .scanline {
+            width: 100%;
+            height: 2px;
+            background: rgba(0, 243, 255, 0.1);
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 100;
+            pointer-events: none;
+            animation: scan 4s linear infinite;
+        }
+        @keyframes scan {
+            from { top: -100px; }
+            to { top: 100vh; }
+        }
+        .planet-card {
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+        }
+        .planet-card:hover {
+            transform: scale(1.02) translateY(-5px);
+            border-color: var(--neon-purple);
+            box-shadow: 0 0 30px rgba(188, 19, 254, 0.3);
+        }
+        .glitch-text:hover {
+            text-shadow: 2px 0 var(--neon-cyan), -2px 0 var(--neon-purple);
+            animation: glitch 0.3s infinite;
+        }
+        @keyframes glitch {
+            0% { transform: translate(0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(-2px, -2px); }
+            60% { transform: translate(2px, 2px); }
+            80% { transform: translate(2px, -2px); }
+            100% { transform: translate(0); }
+        }
+        input, textarea, select {
+            background: rgba(0, 243, 255, 0.05) !important;
+            border: 1px solid rgba(0, 243, 255, 0.3) !important;
+            color: var(--neon-cyan) !important;
+        }
+        input:focus {
+            border-color: var(--neon-cyan) !important;
+            box-shadow: 0 0 10px rgba(0, 243, 255, 0.3) !important;
+        }
+        .hazard-bar { height: 4px; border-radius: 2px; transition: width 1s ease-out; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="scanline"></div>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        function App() {
+            const [discoveries, setDiscoveries] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [showForm, setShowForm] = useState(false);
+            const [formData, setFormData] = useState({
+                name: '', type: 'Terrestrial', distance: '', hazardLevel: 1, description: '', image: 'exoplanet.png'
+            });
+
+            useEffect(() => {
+                fetchDiscoveries();
+            }, []);
+
+            const fetchDiscoveries = () => {
+                fetch("/api/discoveries")
+                    .then(res => res.json())
+                    .then(data => {
+                        setDiscoveries(data);
+                        setLoading(false);
+                    })
+                    .catch(err => console.error("Link Failure:", err));
+            };
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                fetch("/api/discoveries", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                })
+                .then(res => res.json())
+                .then(() => {
+                    fetchDiscoveries();
+                    setShowForm(false);
+                    setFormData({ name: '', type: 'Terrestrial', distance: '', hazardLevel: 1, description: '', image: 'exoplanet.png' });
+                });
+            };
+
+            return (
+                <div class="max-w-7xl mx-auto">
+                    {/* Header HUD */}
+                    <header class="hud-border p-6 mb-12 flex flex-col md:flex-row justify-between items-center rounded-sm border-b-4 border-r-4">
+                        <div>
+                            <h1 class="text-4xl font-bold tracking-widest text-cyan-400 uppercase glitch-text">Nebula Explorer</h1>
+                            <p class="text-xs mt-1 text-cyan-600 font-bold">INTERSTELLAR DISCOVERY PROTOCOL v4.2</p>
+                        </div>
+                        <div class="mt-4 md:mt-0 flex gap-4">
+                            <div class="text-right border-l border-cyan-800 pl-4">
+                                <p class="text-[10px] text-cyan-700">STATUS</p>
+                                <p class="text-sm text-green-400 animate-pulse">SYSTEMS NOMINAL</p>
+                            </div>
+                            <button 
+                                onClick={() => setShowForm(!showForm)}
+                                class="hud-border px-6 py-2 bg-cyan-900/30 hover:bg-cyan-400 hover:text-black transition-all font-bold text-sm tracking-tighter"
+                            >
+                                {showForm ? 'CLOSE LINK' : 'LOG NEW SIGNAL'}
+                            </button>
+                        </div>
+                    </header>
+
+                    {/* Discovery Form */}
+                    {showForm && (
+                        <div class="mb-12 hud-border p-8 rounded-sm border-l-4 border-cyan-400 animate-in fade-in slide-in-from-top duration-500">
+                            <h2 class="text-xl mb-6 text-cyan-400 underline decoration-cyan-900 underline-offset-8">ENCODE SIGNAL DATA</h2>
+                            <form onSubmit={handleSubmit} class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-[10px] mb-1 opacity-70">PLANET NAME</label>
+                                        <input 
+                                            required class="w-full p-2 outline-none" 
+                                            value={formData.name}
+                                            onChange={e => setFormData({...formData, name: e.target.value})}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] mb-1 opacity-70">SECTOR TYPE</label>
+                                        <select 
+                                            class="w-full p-2 outline-none"
+                                            value={formData.type}
+                                            onChange={e => setFormData({...formData, type: e.target.value})}
+                                        >
+                                            <option>Terrestrial</option>
+                                            <option>Gas Giant</option>
+                                            <option>Ice World</option>
+                                            <option>Oceanic</option>
+                                            <option>Volcanic</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] mb-1 opacity-70">DISTANCE (LY)</label>
+                                        <input 
+                                            type="number" required class="w-full p-2 outline-none" 
+                                            value={formData.distance}
+                                            onChange={e => setFormData({...formData, distance: e.target.value})}
+                                        />
+                                    </div>
+                                </div>
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-[10px] mb-1 opacity-70">HAZARD LEVEL (1-10)</label>
+                                        <input 
+                                            type="range" min="1" max="10" class="w-full accent-cyan-400" 
+                                            value={formData.hazardLevel}
+                                            onChange={e => setFormData({...formData, hazardLevel: e.target.value})}
+                                        />
+                                        <div class="flex justify-between text-[10px] text-cyan-600">
+                                            <span>SAFE</span><span>EXTREME</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] mb-1 opacity-70">DESCRIPTION</label>
+                                        <textarea 
+                                            rows="3" class="w-full p-2 outline-none"
+                                            value={formData.description}
+                                            onChange={e => setFormData({...formData, description: e.target.value})}
+                                        ></textarea>
+                                    </div>
+                                    <button class="w-full bg-cyan-400 text-black font-bold py-3 hover:bg-white transition-colors">TRANSMIT DATA</button>
+                                </div>
+                            </form>
+                        </div>
+                    )}
+
+                    {/* Grid of Discoveries */}
+                    {loading ? (
+                        <div class="flex justify-center p-20">
+                            <div class="w-12 h-12 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
+                        </div>
+                    ) : (
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            {discoveries.map(planet => (
+                                <div key={planet._id} class="planet-card hud-border rounded-sm border-t-2 border-r-2 group">
+                                    <div class="h-48 overflow-hidden relative">
+                                        <img src={planet.image} class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" />
+                                        <div class="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-60"></div>
+                                        <div class="absolute bottom-4 left-4">
+                                            <span class="text-[10px] bg-cyan-400 text-black px-2 py-0.5 font-bold uppercase">{planet.type}</span>
+                                        </div>
+                                    </div>
+                                    <div class="p-6">
+                                        <div class="flex justify-between items-start mb-4">
+                                            <h3 class="text-2xl text-cyan-400">{planet.name}</h3>
+                                            <div class="text-right">
+                                                <p class="text-[10px] opacity-50">DISTANCE</p>
+                                                <p class="text-sm font-bold text-white">{planet.distance} LY</p>
+                                            </div>
+                                        </div>
+                                        <p class="text-xs text-slate-400 mb-6 line-clamp-3 leading-relaxed">{planet.description}</p>
+                                        
+                                        <div class="space-y-2">
+                                            <div class="flex justify-between text-[8px] tracking-widest text-cyan-800 font-bold">
+                                                <span>HAZARD INDEX</span>
+                                                <span>{planet.hazardLevel}/10</span>
+                                            </div>
+                                            <div class="w-full bg-slate-900 rounded-full h-1 overflow-hidden border border-cyan-950">
+                                                <div 
+                                                    class="hazard-bar bg-gradient-to-r from-cyan-400 to-purple-600"
+                                                    style={{ width: `${planet.hazardLevel * 10}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="absolute top-2 right-2 flex gap-1 opacity-20 group-hover:opacity-100 transition-opacity">
+                                        <div class="w-1 h-1 bg-cyan-400"></div>
+                                        <div class="w-1 h-1 bg-cyan-400"></div>
+                                        <div class="w-1 h-1 bg-cyan-400"></div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    <footer class="mt-24 pb-8 text-center text-[10px] tracking-[0.5em] text-cyan-900 uppercase">
+                        End of Transmission | Secure Link Active
+                    </footer>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
