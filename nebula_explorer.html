@@ -79,7 +79,6 @@
         .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0, 243, 255, 0.05); }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: var(--neon-cyan); }
         
-        /* Login Terminal Styles */
         .cursor {
             display: inline-block;
             width: 10px;
@@ -96,9 +95,86 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+        const { useState, useEffect, useRef, useMemo } = React;
+
+        // --- IMPROVED MECHANICAL CLICK ENGINE ---
+        const playMechanicalClick = (pitch = 400) => {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Create a noise buffer for the "click" texture
+                const bufferSize = audioCtx.sampleRate * 0.02;
+                const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+
+                const noise = audioCtx.createBufferSource();
+                noise.buffer = buffer;
+
+                // Filter the noise to make it a "thud" or "click" instead of "static"
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(pitch, audioCtx.currentTime);
+                filter.Q.setValueAtTime(10, audioCtx.currentTime);
+
+                const gain = audioCtx.createGain();
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.02);
+
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                noise.start();
+                noise.stop(audioCtx.currentTime + 0.02);
+            } catch (e) {
+                console.warn("Audio Synthesis Failed:", e);
+            }
+        };
+
+        const useInterstellarAudio = (isActive) => {
+            const audioCtx = useRef(null);
+            const oscillator = useRef(null);
+            const filter = useRef(null);
+            const gainNode = useRef(null);
+
+            useEffect(() => {
+                if (isActive) {
+                    audioCtx.current = new (window.AudioContext || window.webkitAudioContext)();
+                    oscillator.current = audioCtx.current.createOscillator();
+                    filter.current = audioCtx.current.createBiquadFilter();
+                    gainNode.current = audioCtx.current.createGain();
+                    oscillator.current.type = 'sawtooth';
+                    filter.current.type = 'lowpass';
+                    filter.current.frequency.value = 440;
+                    gainNode.current.gain.value = 0.02;
+                    oscillator.current.connect(filter.current);
+                    filter.current.connect(gainNode.current);
+                    gainNode.current.connect(audioCtx.current.destination);
+                    oscillator.current.start();
+                } else {
+                    if (audioCtx.current) audioCtx.current.close();
+                }
+                return () => { if (audioCtx.current) audioCtx.current.close(); };
+            }, [isActive]);
+
+            useEffect(() => {
+                const handleMouseMove = (e) => {
+                    if (!isActive || !oscillator.current) return;
+                    const freq = (e.clientX / window.innerWidth) * 200 + 40;
+                    const res = (e.clientY / window.innerHeight) * 1000;
+                    oscillator.current.frequency.setTargetAtTime(freq, audioCtx.current.currentTime, 0.1);
+                    filter.current.frequency.setTargetAtTime(res, audioCtx.current.currentTime, 0.1);
+                };
+                window.addEventListener('mousemove', handleMouseMove);
+                return () => window.removeEventListener('mousemove', handleMouseMove);
+            }, [isActive]);
+        };
 
         const TerminalLogin = ({ onLogin }) => {
+            const [systemStarted, setSystemStarted] = useState(false);
             const [lines, setLines] = useState([]);
             const [input, setInput] = useState('');
             const [booting, setBooting] = useState(true);
@@ -107,16 +183,17 @@
                 "> INITIALIZING NEBULA_OS v4.2...",
                 "> ESTABLISHING QUANTUM LINK...",
                 "> DECRYPTING INTERSTELLAR LOGS...",
-                "> BYPASSING SECTOR FIREWALLS...",
                 "> [!] ACCESS RESTRICTED: PILOT CREDENTIALS REQUIRED.",
                 "> TYPE 'SCAN' TO COMMENCE MISSION."
             ];
 
             useEffect(() => {
+                if (!systemStarted) return;
                 let currentLine = 0;
                 const timer = setInterval(() => {
                     if (currentLine < bootSequence.length) {
                         setLines(prev => [...prev, bootSequence[currentLine]]);
+                        playMechanicalClick(300 + (currentLine * 50)); // Thuddier clicks
                         currentLine++;
                     } else {
                         setBooting(false);
@@ -124,10 +201,11 @@
                     }
                 }, 800);
                 return () => clearInterval(timer);
-            }, []);
+            }, [systemStarted]);
 
             const handleCommand = (e) => {
                 if (e.key === 'Enter') {
+                    playMechanicalClick(800);
                     if (input.toUpperCase() === 'SCAN') {
                         setLines(prev => [...prev, "> COMMAND ACCEPTED. ACCESSING NEBULA EXPLORER..."]);
                         setTimeout(() => onLogin(), 1000);
@@ -137,6 +215,24 @@
                     }
                 }
             };
+
+            if (!systemStarted) {
+                return (
+                    <div class="fixed inset-0 bg-black z-[300] flex flex-col items-center justify-center p-8 text-center">
+                        <div class="hud-border p-12 max-w-lg w-full cursor-pointer hover:bg-cyan-900/10 transition-all group" onClick={() => {
+                            setSystemStarted(true);
+                            playMechanicalClick(500); 
+                        }}>
+                            <h1 class="text-3xl font-bold text-cyan-400 mb-4 tracking-widest uppercase animate-pulse">Nebula Explorer</h1>
+                            <p class="text-xs text-cyan-800 mb-8 tracking-[0.3em]">SECURE UPLINK REQUIRED</p>
+                            <div class="py-4 px-8 border-2 border-cyan-400 text-cyan-400 font-bold group-hover:bg-cyan-400 group-hover:text-black transition-all uppercase tracking-widest">
+                                Initialize System
+                            </div>
+                        </div>
+                        <p class="mt-8 text-[10px] text-slate-800 tracking-widest uppercase">System Auth v4.2.0 | Galactic Sector 7G</p>
+                    </div>
+                );
+            }
 
             return (
                 <div class="fixed inset-0 bg-black z-[300] p-8 terminal-font text-[#00ff41] flex flex-col justify-start overflow-hidden">
@@ -153,7 +249,10 @@
                                     autoFocus
                                     class="bg-transparent border-none outline-none text-[#00ff41] w-full"
                                     value={input}
-                                    onChange={e => setInput(e.target.value)}
+                                    onChange={e => {
+                                        setInput(e.target.value);
+                                        playMechanicalClick(400); // Thuddy keystroke
+                                    }}
                                     onKeyDown={handleCommand}
                                 />
                                 <div class="cursor"></div>
@@ -166,6 +265,7 @@
 
         function App() {
             const [isLoggedIn, setIsLoggedIn] = useState(false);
+            const [audioActive, setAudioActive] = useState(false);
             const [discoveries, setDiscoveries] = useState([]);
             const [loading, setLoading] = useState(true);
             const [showForm, setShowForm] = useState(false);
@@ -174,61 +274,36 @@
                 name: '', type: 'Terrestrial', distance: '', hazardLevel: 1, atmosphere: '', temperature: '', composition: '', description: '', image: 'exoplanet.png'
             });
 
-            const clickSound = useRef(null);
-            const scanSound = useRef(null);
+            useInterstellarAudio(audioActive);
 
             useEffect(() => {
-                if (isLoggedIn) {
-                    fetchDiscoveries();
-                    clickSound.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3');
-                    scanSound.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3');
-                }
+                if (isLoggedIn) fetchDiscoveries();
             }, [isLoggedIn]);
 
-            // Voice Feedback System
             useEffect(() => {
-                if (selectedPlanet) {
-                    speakMissionReport(selectedPlanet);
-                }
+                if (selectedPlanet) speakMissionReport(selectedPlanet);
             }, [selectedPlanet]);
 
             const speakMissionReport = (planet) => {
                 if (!window.speechSynthesis) return;
-                
-                // Cancel any ongoing speech
                 window.speechSynthesis.cancel();
-
-                const text = `Deep Scan complete. Planet ${planet.name} identified as a ${planet.type} world. Distance is ${planet.distance} light years. ${planet.hazardLevel >= 8 ? 'Warning: Extreme hazard detected.' : 'Hazard index is within mission parameters.'} Mission briefing: ${planet.description}`;
-                
+                const text = `Deep Scan complete. Planet ${planet.name} identified. It is a ${planet.type} world located ${planet.distance} light years from the core. Atmospheric conditions: ${planet.atmosphere || 'unstable or unknown'}. Surface temperature: ${planet.temperature || 'extreme or unmeasured'}. Chemical composition: ${planet.composition || 'unanalyzed'}. Hazard index is ${planet.hazardLevel} out of 10. ${planet.hazardLevel >= 8 ? 'Warning: Immediate danger protocol active.' : 'Mission parameters remain stable.'} Briefing: ${planet.description}`;
                 const utterance = new SpeechSynthesisUtterance(text);
-                
-                // Try to find a robotic or deep voice
-                const voices = window.speechSynthesis.getVoices();
-                const preferredVoice = voices.find(v => v.name.includes('Google UK English Male') || v.name.includes('Microsoft David'));
-                if (preferredVoice) utterance.voice = preferredVoice;
-
-                utterance.pitch = 0.8; // Slightly deeper
-                utterance.rate = 0.9;  // Slightly slower for dramatic effect
-                
+                utterance.pitch = 0.85;
+                utterance.rate = 0.95;
                 window.speechSynthesis.speak(utterance);
             };
-
-            const playClick = () => { if (clickSound.current) { clickSound.current.currentTime = 0; clickSound.current.play().catch(() => {}); } };
-            const playScan = () => { if (scanSound.current) { scanSound.current.currentTime = 0; scanSound.current.play().catch(() => {}); } };
 
             const fetchDiscoveries = () => {
                 fetch("/api/discoveries")
                     .then(res => res.json())
-                    .then(data => {
-                        setDiscoveries(data);
-                        setLoading(false);
-                    })
+                    .then(data => { setDiscoveries(data); setLoading(false); })
                     .catch(err => console.error("Link Failure:", err));
             };
 
             const handleSubmit = (e) => {
                 e.preventDefault();
-                playClick();
+                playMechanicalClick(600);
                 fetch("/api/discoveries", {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -245,86 +320,88 @@
             if (!isLoggedIn) return <TerminalLogin onLogin={() => setIsLoggedIn(true)} />;
 
             return (
-                <div class="max-w-7xl mx-auto animate-in fade-in zoom-in duration-1000">
-                    {/* Header HUD */}
+                <div class="max-w-7xl mx-auto animate-in fade-in zoom-in duration-700">
                     <header class="hud-border p-6 mb-12 flex flex-col md:flex-row justify-between items-center rounded-sm border-b-4 border-r-4">
                         <div>
                             <h1 class="text-4xl font-bold tracking-widest text-cyan-400 uppercase glitch-text">Nebula Explorer</h1>
-                            <p class="text-xs mt-1 text-cyan-600 font-bold">INTERSTELLAR DISCOVERY PROTOCOL v4.2</p>
+                            <p class="text-xs mt-1 text-cyan-600 font-bold uppercase tracking-widest">Quantum Frequency: {audioActive ? 'TUNED' : 'OFFLINE'}</p>
                         </div>
-                        <div class="mt-4 md:mt-0 flex gap-4">
-                            <div class="text-right border-l border-cyan-800 pl-4">
-                                <p class="text-[10px] text-cyan-700">STATUS</p>
-                                <p class="text-sm text-green-400 animate-pulse">SYSTEMS NOMINAL</p>
+                        <div class="mt-4 md:mt-0 flex items-center gap-6">
+                            <div class="flex items-center gap-3 border-r border-cyan-900 pr-6">
+                                <span class="text-[10px] text-cyan-800 font-bold">AUDIO UPLINK</span>
+                                <button 
+                                    onClick={() => { playMechanicalClick(1000); setAudioActive(!audioActive); }}
+                                    class={`w-12 h-6 rounded-full border border-cyan-400 p-1 transition-all ${audioActive ? 'bg-cyan-400' : 'bg-transparent'}`}
+                                >
+                                    <div class={`w-4 h-4 rounded-full transition-all ${audioActive ? 'bg-black translate-x-6' : 'bg-cyan-400'}`}></div>
+                                </button>
                             </div>
                             <button 
-                                onClick={() => { playClick(); setShowForm(!showForm); }}
-                                class="hud-border px-6 py-2 bg-cyan-900/30 hover:bg-cyan-400 hover:text-black transition-all font-bold text-sm tracking-tighter"
+                                onClick={() => { playMechanicalClick(500); setShowForm(!showForm); }}
+                                class="hud-border px-6 py-2 bg-cyan-900/30 hover:bg-cyan-400 hover:text-black transition-all font-bold text-sm"
                             >
                                 {showForm ? 'CLOSE LINK' : 'LOG NEW SIGNAL'}
                             </button>
                         </div>
                     </header>
 
-                    {/* Discovery Form */}
                     {showForm && (
                         <div class="mb-12 hud-border p-8 rounded-sm border-l-4 border-cyan-400 animate-in fade-in slide-in-from-top duration-500">
-                            <h2 class="text-xl mb-6 text-cyan-400 underline decoration-cyan-900 underline-offset-8">ENCODE SIGNAL DATA</h2>
+                            <h2 class="text-xl mb-6 text-cyan-400 uppercase tracking-widest underline underline-offset-8 decoration-cyan-900">ENCODE SIGNAL DATA</h2>
                             <form onSubmit={handleSubmit} class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div class="space-y-4">
                                     <div>
-                                        <label class="block text-[10px] mb-1 opacity-70">PLANET NAME</label>
+                                        <label class="block text-[10px] mb-1 opacity-70 uppercase tracking-widest">Planet Name</label>
                                         <input required class="w-full p-2 outline-none bg-slate-900 border border-cyan-900 text-cyan-400" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
                                     </div>
                                     <div class="grid grid-cols-2 gap-4">
                                         <div>
-                                            <label class="block text-[10px] mb-1 opacity-70">SECTOR TYPE</label>
+                                            <label class="block text-[10px] mb-1 opacity-70 uppercase tracking-widest">Sector Type</label>
                                             <select class="w-full p-2 outline-none text-xs bg-slate-900 border border-cyan-900 text-cyan-400" value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})}>
                                                 <option>Terrestrial</option><option>Gas Giant</option><option>Ice World</option><option>Oceanic</option><option>Volcanic</option>
                                             </select>
                                         </div>
                                         <div>
-                                            <label class="block text-[10px] mb-1 opacity-70">DISTANCE (LY)</label>
+                                            <label class="block text-[10px] mb-1 opacity-70 uppercase tracking-widest">Distance (LY)</label>
                                             <input type="number" required class="w-full p-2 outline-none bg-slate-900 border border-cyan-900 text-cyan-400" value={formData.distance} onChange={e => setFormData({...formData, distance: e.target.value})} />
                                         </div>
                                     </div>
                                     <div class="grid grid-cols-2 gap-4">
                                         <div>
-                                            <label class="block text-[10px] mb-1 opacity-70">ATMOSPHERE</label>
+                                            <label class="block text-[10px] mb-1 opacity-70 uppercase tracking-widest">Atmosphere</label>
                                             <input class="w-full p-2 outline-none text-xs bg-slate-900 border border-cyan-900 text-cyan-400" value={formData.atmosphere} onChange={e => setFormData({...formData, atmosphere: e.target.value})} />
                                         </div>
                                         <div>
-                                            <label class="block text-[10px] mb-1 opacity-70">TEMPERATURE</label>
+                                            <label class="block text-[10px] mb-1 opacity-70 uppercase tracking-widest">Temperature</label>
                                             <input class="w-full p-2 outline-none text-xs bg-slate-900 border border-cyan-900 text-cyan-400" value={formData.temperature} onChange={e => setFormData({...formData, temperature: e.target.value})} />
                                         </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] mb-1 opacity-70 uppercase tracking-widest">Composition</label>
+                                        <input class="w-full p-2 outline-none text-xs bg-slate-900 border border-cyan-900 text-cyan-400" value={formData.composition} onChange={e => setFormData({...formData, composition: e.target.value})} />
                                     </div>
                                 </div>
                                 <div class="space-y-4">
                                     <div>
-                                        <label class="block text-[10px] mb-1 opacity-70">HAZARD LEVEL (1-10)</label>
+                                        <label class="block text-[10px] mb-1 opacity-70 uppercase tracking-widest">Hazard Level (1-10)</label>
                                         <input type="range" min="1" max="10" class="w-full accent-cyan-400" value={formData.hazardLevel} onChange={e => setFormData({...formData, hazardLevel: e.target.value})} />
                                     </div>
                                     <div>
-                                        <label class="block text-[10px] mb-1 opacity-70">COMPOSITION</label>
-                                        <input class="w-full p-2 outline-none text-xs bg-slate-900 border border-cyan-900 text-cyan-400" value={formData.composition} onChange={e => setFormData({...formData, composition: e.target.value})} />
+                                        <label class="block text-[10px] mb-1 opacity-70 uppercase tracking-widest">Mission Description</label>
+                                        <textarea rows="3" class="w-full p-2 outline-none text-xs bg-slate-900 border border-cyan-900 text-cyan-400" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})}></textarea>
                                     </div>
-                                    <div>
-                                        <label class="block text-[10px] mb-1 opacity-70">DESCRIPTION</label>
-                                        <textarea rows="2" class="w-full p-2 outline-none text-xs bg-slate-900 border border-cyan-900 text-cyan-400" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})}></textarea>
-                                    </div>
-                                    <button class="w-full bg-cyan-400 text-black font-bold py-3 hover:bg-white transition-colors uppercase tracking-widest text-sm">Transmit Data</button>
+                                    <button class="w-full bg-cyan-400 text-black font-bold py-3 hover:bg-white transition-colors uppercase tracking-widest text-sm">Transmit Signal</button>
                                 </div>
                             </form>
                         </div>
                     )}
 
-                    {/* Grid of Discoveries */}
                     {loading ? (
                         <div class="flex justify-center p-20"><div class="w-12 h-12 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin"></div></div>
                     ) : (
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                             {discoveries.map(planet => (
-                                <div key={planet._id} onClick={() => { playScan(); setSelectedPlanet(planet); }} class={`planet-card hud-border rounded-sm border-t-2 border-r-2 group cursor-pointer ${planet.hazardLevel >= 8 ? 'border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.2)]' : ''}`}>
+                                <div key={planet._id} onClick={() => { playMechanicalClick(1100); setSelectedPlanet(planet); }} class={`planet-card hud-border rounded-sm border-t-2 border-r-2 group cursor-pointer ${planet.hazardLevel >= 8 ? 'border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.2)]' : ''}`}>
                                     {planet.hazardLevel >= 8 && <div class="absolute top-0 left-0 w-full h-full pointer-events-none animate-pulse bg-red-500/5 z-0"></div>}
                                     <div class="h-48 overflow-hidden relative">
                                         <img src={planet.image} class="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" />
@@ -355,7 +432,6 @@
                         </div>
                     )}
 
-                    {/* Deep Scan Modal */}
                     {selectedPlanet && (
                         <div class="fixed inset-0 z-[200] flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-300">
                             <div class="absolute inset-0 bg-black/95 backdrop-blur-xl" onClick={() => { setSelectedPlanet(null); window.speechSynthesis.cancel(); }}></div>
@@ -367,21 +443,20 @@
                                             <div class="absolute -top-2 -left-2 w-8 h-8 border-t-2 border-l-2 border-cyan-400"></div>
                                             <div class="absolute -bottom-2 -right-2 w-8 h-8 border-b-2 border-r-2 border-cyan-400"></div>
                                         </div>
-                                        
                                         <div class="grid grid-cols-2 gap-4">
-                                            <div class="hud-border p-4 bg-cyan-950/10">
-                                                <p class="text-[10px] text-cyan-600 mb-1">ATMOSPHERE</p>
-                                                <p class="text-sm font-bold text-cyan-100">{selectedPlanet.atmosphere || 'UNKNOWN'}</p>
+                                            <div class="hud-border p-4 bg-cyan-950/10 min-h-[100px] flex flex-col justify-center overflow-hidden">
+                                                <p class="text-[10px] text-cyan-600 mb-1 tracking-widest uppercase">Atmosphere</p>
+                                                <p class="text-[11px] font-bold text-cyan-100 uppercase leading-tight break-words">{selectedPlanet.atmosphere || 'UNKNOWN'}</p>
                                             </div>
-                                            <div class="hud-border p-4 bg-cyan-950/10">
-                                                <p class="text-[10px] text-cyan-600 mb-1">TEMPERATURE</p>
-                                                <p class="text-sm font-bold text-cyan-100">{selectedPlanet.temperature || 'UNKNOWN'}</p>
+                                            <div class="hud-border p-4 bg-cyan-950/10 min-h-[100px] flex flex-col justify-center overflow-hidden">
+                                                <p class="text-[10px] text-cyan-600 mb-1 tracking-widest uppercase">Temperature</p>
+                                                <p class="text-[11px] font-bold text-cyan-100 uppercase leading-tight break-words">{selectedPlanet.temperature || 'UNKNOWN'}</p>
                                             </div>
                                         </div>
                                     </div>
                                     <div class="flex flex-col">
                                         <div class="flex justify-between items-start mb-8 border-b border-cyan-900 pb-4">
-                                            <div><h2 class="text-4xl text-cyan-400 font-bold">{selectedPlanet.name}</h2><p class="text-xs text-cyan-700 tracking-[0.3em] uppercase mt-1">{selectedPlanet.type}</p></div>
+                                            <div><h2 class="text-4xl text-cyan-400 font-bold uppercase">{selectedPlanet.name}</h2><p class="text-xs text-cyan-700 tracking-[0.3em] uppercase mt-1">{selectedPlanet.type}</p></div>
                                             <button onClick={() => { setSelectedPlanet(null); window.speechSynthesis.cancel(); }} class="text-cyan-800 hover:text-white transition-colors">
                                                 <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                                             </button>
